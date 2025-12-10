@@ -423,11 +423,15 @@ func (client *Client) BuildCanonicalizedHeaders(headers map[string]*string) (_re
 	tmp := tea.String("")
 	for _, key := range headersArray {
 		lowerKey := string_.ToLower(key)
-		if !tea.BoolValue(string_.Contains(tmp, lowerKey)) {
-			tmp = tea.String(tea.StringValue(tmp) + "," + tea.StringValue(lowerKey))
-			newHeaders[tea.StringValue(lowerKey)] = string_.Trim(headers[tea.StringValue(key)])
-		} else {
-			newHeaders[tea.StringValue(lowerKey)] = tea.String(tea.StringValue(newHeaders[tea.StringValue(lowerKey)]) + "," + tea.StringValue(string_.Trim(headers[tea.StringValue(key)])))
+		value := headers[tea.StringValue(key)]
+		if !tea.BoolValue(util.IsUnset(value)) {
+			if !tea.BoolValue(string_.Contains(tmp, lowerKey)) || tea.BoolValue(string_.Equals(lowerKey, tea.String("host"))) {
+				tmp = tea.String(tea.StringValue(tmp) + "," + tea.StringValue(lowerKey))
+				newHeaders[tea.StringValue(lowerKey)] = string_.Trim(value)
+			} else {
+				newHeaders[tea.StringValue(lowerKey)] = tea.String(tea.StringValue(newHeaders[tea.StringValue(lowerKey)]) + "," + tea.StringValue(string_.Trim(value)))
+			}
+
 		}
 
 	}
@@ -442,14 +446,22 @@ func (client *Client) BuildCanonicalizedHeaders(headers map[string]*string) (_re
 
 func (client *Client) GetSignedHeaders(headers map[string]*string) (_result []*string) {
 	headersArray := map_.KeySet(headers)
-	sortedHeadersArray := array.AscSort(headersArray)
+	newHeadersArray := []*string{}
+	for _, key := range headersArray {
+		lowerKey := string_.ToLower(key)
+		value := headers[tea.StringValue(key)]
+		if !tea.BoolValue(util.IsUnset(value)) {
+			newHeadersArray = append(newHeadersArray, lowerKey)
+		}
+
+	}
+	sortedHeadersArray := array.AscSort(newHeadersArray)
 	tmp := tea.String("")
 	separator := tea.String("")
 	for _, key := range sortedHeadersArray {
-		lowerKey := string_.ToLower(key)
-		if tea.BoolValue(string_.HasPrefix(lowerKey, tea.String("x-acs-"))) || tea.BoolValue(string_.Equals(lowerKey, tea.String("host"))) || tea.BoolValue(string_.Equals(lowerKey, tea.String("content-type"))) {
-			if !tea.BoolValue(string_.Contains(tmp, lowerKey)) {
-				tmp = tea.String(tea.StringValue(tmp) + tea.StringValue(separator) + tea.StringValue(lowerKey))
+		if tea.BoolValue(string_.HasPrefix(key, tea.String("x-acs-"))) || tea.BoolValue(string_.Equals(key, tea.String("host"))) || tea.BoolValue(string_.Equals(key, tea.String("content-type"))) {
+			if !tea.BoolValue(string_.Contains(tmp, key)) {
+				tmp = tea.String(tea.StringValue(tmp) + tea.StringValue(separator) + tea.StringValue(key))
 				separator = tea.String(";")
 			}
 
